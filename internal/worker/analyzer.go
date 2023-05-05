@@ -59,7 +59,7 @@ func (processor *RedisTaskProcessor) ProcessStartAuditorAnalysis(ctx context.Con
 		return err
 	}
 
-	ok, err := processor.analyzer.InitiateAnalyzer()
+	ok, err := processor.analyzer.InitiateAnalyzer(payload)
 
 	if err != nil {
 		processor.logger.Errorw("failed to send email", "data", payload, "error", err, "taskId", requestId)
