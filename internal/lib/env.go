@@ -14,14 +14,11 @@ type Env struct {
 	AWS_ACCESS_KEY_ID     string `mapstructure:"AWS_ACCESS_KEY_ID"`
 	AWS_SECRET_ACCESS_KEY string `mapstructure:"AWS_SECRET_ACCESS_KEY"`
 
-	COGNITO_USER_POOL_ID string `mapstructure:"COGNITO_USER_POOL_ID"`
-	COGNITO_CLIENT_ID    string `mapstructure:"COGNITO_CLIENT_ID"`
+	S3_BUCKET_NAME string `mapstructure:"S3_BUCKET_NAME"`
+	DATABASE_DSN   string `mapstructure:"DATABASE_DSN"`
 
-	ACCESS_KEY_SECRET    string `mapstructure:"ACCESS_KEY_SECRET"`
-	REFRESH_TOKEN_SECRET string `mapstructure:"REFRESH_TOKEN_SECRET"`
-
-	EMAIL_SERVICE_HOST string `mapstructure:"EMAIL_SERVICE_HOST"`
-	APPLICATION_DOMAIN string `mapstructure:"APPLICATION_DOMAIN"`
+	REDIS_HOST string `mapstructure:"REDIS_HOST"`
+	REDIS_PORT string `mapstructure:"REDIS_PORT"`
 }
 
 var globalEnv = Env{}
@@ -41,7 +38,12 @@ func NewEnv(logger Logger) *Env {
 		"REFRESH_TOKEN_SECRET",
 		"EMAIL_SERVICE_HOST",
 		"APPLICATION_DOMAIN",
+		"S3_BUCKET_NAME",
+		"DATABASE_DSN",
+		"REDIS_HOST",
+		"REDIS_PORT",
 	} {
+
 		envVars[key] = os.Getenv(key)
 	}
 

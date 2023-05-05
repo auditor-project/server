@@ -1,0 +1,3 @@
+[submodule "internal/proto"]
+	path = internal/proto
+	url = git@github.com:auditor-project/go-protobuf-bindings.git
