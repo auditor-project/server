@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gorm.io/gorm"
 )
 
 type ErrorHandler struct {
@@ -33,7 +34,11 @@ func (h *ErrorHandler) GenerateErrorWithGrpcCodes(data GenerateErrorWithGrpcCode
 	if data.Err != nil {
 		h.logger.Errorw("Error", "details", data.Err.Error(), "payload", data.Payload, "method", data.Method)
 
-		if errors.Is(data.Err, context.Canceled) {
+		if errors.Is(data.Err, gorm.ErrRecordNotFound) {
+			return status.Error(codes.NotFound, "Resource not found")
+		} else if errors.Is(data.Err, gorm.ErrInvalidTransaction) {
+			return status.Error(codes.FailedPrecondition, "Invalid transaction happened")
+		} else if errors.Is(data.Err, context.Canceled) {
 			return status.Error(codes.Canceled, "Request cancelled by client")
 		} else if errors.Is(data.Err, context.DeadlineExceeded) {
 			return status.Error(codes.DeadlineExceeded, "Request deadline exceeded")
