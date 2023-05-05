@@ -3,11 +3,13 @@ package service
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -17,6 +19,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
+
+type MatchResult struct {
+	ID       int
+	File     string
+	FileType string
+	Search   string
+	MatchStr string
+	Hits     string
+	Line     int
+}
 
 type AnalyzerServiceImpl struct {
 	log  lib.Logger
@@ -87,10 +99,14 @@ func (s *AnalyzerServiceImpl) DownloadFileFromS3(fileName string) (*http.Respons
 		Key:    aws.String(fileName),
 	})
 	urlStr, err := req.Presign(15 * time.Minute)
+
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := http.Get(urlStr)
 
 	if err != nil {
-		s.log.Error(err)
 		return nil, err
 	}
 
@@ -107,14 +123,28 @@ func (s *AnalyzerServiceImpl) DownloadAndSetupArchiveForAnalysis(fileName string
 	defer resp.Body.Close()
 
 	buffer, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return false, err
+	}
+
 	readerAt := bytes.NewReader(buffer)
 	zipReader, err := zip.NewReader(readerAt, int64(len(buffer)))
 
 	for _, zipFile := range zipReader.File {
 		f, err := os.OpenFile(filepath.Join(workingDir, zipFile.Name), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipFile.Mode())
+
+		if err != nil {
+			return false, err
+		}
 		defer f.Close()
 
 		rc, err := zipFile.Open()
+
+		if err != nil {
+			return false, err
+		}
+
 		defer rc.Close()
 
 		_, err = io.Copy(f, rc)
@@ -141,11 +171,31 @@ func (s *AnalyzerServiceImpl) InitiateAnalyzer(req *proto.AuditStartRequest) (st
 
 	s.log.Info(tmpDir)
 	ok, err := s.DownloadAndSetupSignatureFilesForAnalysis(req.Signature, tmpDir)
+
+	if !ok {
+		return "", err
+	}
+
 	ok, err = s.DownloadAndSetupArchiveForAnalysis(req.FileName, tmpDir)
 
-	if !ok || err != nil {
-		s.log.Error(err)
+	if !ok {
+		return "", err
 	}
+
+	cmd := exec.Command(s.env.AUDITOR_INSTALL_NAME, "-p", tmpDir, "-s", fmt.Sprintf("%s/signature.yaml", tmpDir))
+	out, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+	var results []MatchResult
+	err = json.Unmarshal(out, &results)
+
+	if err != nil {
+		panic(err)
+	}
+
+	s.log.Info(results)
 
 	return "ok", nil
 }

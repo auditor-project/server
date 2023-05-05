@@ -19,6 +19,8 @@ type Env struct {
 
 	REDIS_HOST string `mapstructure:"REDIS_HOST"`
 	REDIS_PORT string `mapstructure:"REDIS_PORT"`
+
+	AUDITOR_INSTALL_NAME string `mapstructure:"AUDITOR_INSTALL_NAME"`
 }
 
 var globalEnv = Env{}
@@ -42,6 +44,7 @@ func NewEnv(logger Logger) *Env {
 		"DATABASE_DSN",
 		"REDIS_HOST",
 		"REDIS_PORT",
+		"AUDITOR_INSTALL_NAME",
 	} {
 
 		envVars[key] = os.Getenv(key)
