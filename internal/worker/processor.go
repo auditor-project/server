@@ -22,10 +22,11 @@ type TaskProcessor interface {
 type RedisTaskProcessor struct {
 	server   *asynq.Server
 	logger   lib.Logger
-	analyzer *service.AnalyzerServiceImpl
+	analyzer *service.AnalyzerService
 }
 
-func NewRedisTaskProcessor(redis redis.RedisConnection, logger lib.Logger, analyzer *service.AnalyzerServiceImpl) TaskProcessor {
+func NewRedisTaskProcessor(redis redis.RedisConnection, logger lib.Logger, analyzer *service.AnalyzerService) TaskProcessor {
+	logger.Debug("Init redis task processor")
 	server := asynq.NewServer(
 		redis.RedisClientOpt,
 		asynq.Config{

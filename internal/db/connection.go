@@ -1,20 +1,30 @@
 package db
 
 import (
+	"fmt"
+
 	"auditor.z9fr.xyz/server/internal/lib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type NewDatabase struct {
+type Database struct {
 	*gorm.DB
 }
 
-func NewDatabaseImpl(logger lib.Logger, env *lib.Env) NewDatabase {
+func NewDatabaseImpl(logger lib.Logger, env *lib.Env) *Database {
+	logger.Debug("Init new database impl")
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s  sslmode=%s TimeZone=UTC",
+		env.DB_HOST,
+		env.DB_HOST,
+		env.DB_HOST,
+		env.DB_HOST,
+		"disable")
+
 	gormConfig := &gorm.Config{}
 
 	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN:                  env.DATABASE_DSN,
+		DSN:                  dsn,
 		PreferSimpleProtocol: true,
 	}), gormConfig)
 
@@ -24,5 +34,5 @@ func NewDatabaseImpl(logger lib.Logger, env *lib.Env) NewDatabase {
 		logger.Panic(err)
 	}
 
-	return NewDatabase{DB: db}
+	return &Database{DB: db}
 }

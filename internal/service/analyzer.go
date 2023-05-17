@@ -11,8 +11,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"auditor.z9fr.xyz/server/internal/db"
 	"auditor.z9fr.xyz/server/internal/lib"
 	"auditor.z9fr.xyz/server/internal/proto"
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,19 +22,26 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-type MatchResult struct {
-	ID       int
-	File     string
-	FileType string
-	Search   string
-	MatchStr string
-	Hits     string
-	Line     int
+type Results struct {
+	ProjectID string        `json:"projectId"`
+	Results   []MatchResult `json:"results"`
 }
 
-type AnalyzerServiceImpl struct {
+type MatchResult struct {
+	ID       int             `json:"id"`
+	File     string          `json:"file"`
+	Filetype string          `json:"filetype"`
+	Search   string          `json:"search"`
+	MatchStr string          `json:"match_str"`
+	Hits     string          `json:"hits"`
+	Line     int             `json:"line"`
+	Code     [][]interface{} `json:"code"`
+}
+
+type AnalyzerService struct {
 	log  lib.Logger
 	env  *lib.Env
+	db   *db.Database
 	sess *session.Session
 	s3   *s3.S3
 }
@@ -44,7 +53,9 @@ const (
 func NewAnalyzerServiceImpl(
 	log lib.Logger,
 	env *lib.Env,
-) *AnalyzerServiceImpl {
+) *AnalyzerService {
+	log.Debug("Init analyzier service ")
+
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(env.AWS_REGION)},
 	)
@@ -52,7 +63,7 @@ func NewAnalyzerServiceImpl(
 		log.Fatal(err)
 	}
 
-	return &AnalyzerServiceImpl{
+	return &AnalyzerService{
 		log:  log,
 		env:  env,
 		sess: sess,
@@ -60,7 +71,7 @@ func NewAnalyzerServiceImpl(
 	}
 }
 
-func (s *AnalyzerServiceImpl) GenerateWorkerDir() string {
+func (s *AnalyzerService) GenerateWorkerDir() string {
 	dir, err := ioutil.TempDir("", TEMP_DIRERCTORY_PREFIX)
 
 	if err != nil {
@@ -70,7 +81,7 @@ func (s *AnalyzerServiceImpl) GenerateWorkerDir() string {
 	return dir
 }
 
-func (s *AnalyzerServiceImpl) DownloadAndSetupSignatureFilesForAnalysis(signatureName string, workingDir string) (bool, error) {
+func (s *AnalyzerService) DownloadAndSetupSignatureFilesForAnalysis(signatureName string, workingDir string) (bool, error) {
 	resp, err := s.DownloadFileFromS3(signatureName)
 
 	if err != nil {
@@ -93,7 +104,7 @@ func (s *AnalyzerServiceImpl) DownloadAndSetupSignatureFilesForAnalysis(signatur
 	return true, nil
 }
 
-func (s *AnalyzerServiceImpl) DownloadFileFromS3(fileName string) (*http.Response, error) {
+func (s *AnalyzerService) DownloadFileFromS3(fileName string) (*http.Response, error) {
 	req, _ := s.s3.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(s.env.S3_BUCKET_NAME),
 		Key:    aws.String(fileName),
@@ -113,7 +124,7 @@ func (s *AnalyzerServiceImpl) DownloadFileFromS3(fileName string) (*http.Respons
 	return resp, nil
 }
 
-func (s *AnalyzerServiceImpl) DownloadAndSetupArchiveForAnalysis(fileName string, workingDir string) (bool, error) {
+func (s *AnalyzerService) DownloadAndSetupArchiveForAnalysis(fileName string, workingDir string) (bool, error) {
 	resp, err := s.DownloadFileFromS3(fileName)
 
 	if err != nil {
@@ -164,8 +175,11 @@ func (s *AnalyzerServiceImpl) DownloadAndSetupArchiveForAnalysis(fileName string
 
 }
 
-func (s *AnalyzerServiceImpl) InitiateAnalyzer(req *proto.AuditStartRequest) (string, error) {
-	fmt.Print("Analyze start ")
+func (s *AnalyzerService) InitiateAnalyzer(req *proto.AuditStartRequest) (string, error) {
+	s.log.Info("Starting to process", "request", req)
+	//if err := s.db.Debug().Table("project").Where("id = ?", req.ProjectId).Update("currentStatus", "processing").Error; err != nil {
+	//		return "", err
+	// 	}
 
 	tmpDir := s.GenerateWorkerDir()
 
@@ -197,5 +211,33 @@ func (s *AnalyzerServiceImpl) InitiateAnalyzer(req *proto.AuditStartRequest) (st
 
 	s.log.Info(results)
 
-	return "ok", nil
+	url := fmt.Sprintf("%s/save-results", s.env.NEXT_API_URL)
+	method := "POST"
+
+	resultsApiFormat := Results{
+		ProjectID: req.ProjectId,
+		Results:   results,
+	}
+
+	jsonData, err := json.Marshal(resultsApiFormat)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{}
+	httpreq, err := http.NewRequest(method, url, strings.NewReader(string(jsonData)))
+
+	httpreq.Header.Add("x-api-token", s.env.BULK_SAVE_API_KEY)
+	httpreq.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(httpreq)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	s.log.Info(body)
+	return "ok", err
 }

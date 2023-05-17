@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"auditor.z9fr.xyz/server/internal/db"
 	"auditor.z9fr.xyz/server/internal/handler"
 	"auditor.z9fr.xyz/server/internal/lib"
 	"auditor.z9fr.xyz/server/internal/redis"
@@ -11,8 +12,9 @@ import (
 
 var CommonModules = fx.Options(
 	lib.Module,
-	handler.Module,
+	db.Module,
 	service.Module,
+	handler.Module,
 	redis.Module,
 	worker.Module,
 )

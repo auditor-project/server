@@ -11,7 +11,8 @@ type RedisConnection struct {
 	asynq.RedisClientOpt
 }
 
-func NewRedisConnection(env *lib.Env) RedisConnection {
+func NewRedisConnection(env *lib.Env, logger lib.Logger) RedisConnection {
+	logger.Debug("Init new redis connection")
 	redisOpt := asynq.RedisClientOpt{
 		Addr: fmt.Sprintf("%s:%s", env.REDIS_HOST, env.REDIS_PORT),
 	}

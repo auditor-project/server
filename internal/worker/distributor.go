@@ -23,6 +23,7 @@ type RedisTaskDistributor struct {
 }
 
 func NewRedisTaskDistributor(redis redis.RedisConnection, logger lib.Logger) TaskDistributor {
+	logger.Debug("Init new redis task distributor")
 	client := asynq.NewClient(redis.RedisClientOpt)
 	return &RedisTaskDistributor{
 		client: client,
