@@ -14,14 +14,19 @@ type Env struct {
 	AWS_ACCESS_KEY_ID     string `mapstructure:"AWS_ACCESS_KEY_ID"`
 	AWS_SECRET_ACCESS_KEY string `mapstructure:"AWS_SECRET_ACCESS_KEY"`
 
-	COGNITO_USER_POOL_ID string `mapstructure:"COGNITO_USER_POOL_ID"`
-	COGNITO_CLIENT_ID    string `mapstructure:"COGNITO_CLIENT_ID"`
+	S3_BUCKET_NAME string `mapstructure:"S3_BUCKET_NAME"`
 
-	ACCESS_KEY_SECRET    string `mapstructure:"ACCESS_KEY_SECRET"`
-	REFRESH_TOKEN_SECRET string `mapstructure:"REFRESH_TOKEN_SECRET"`
+	REDIS_HOST string `mapstructure:"REDIS_HOST"`
+	REDIS_PORT string `mapstructure:"REDIS_PORT"`
 
-	EMAIL_SERVICE_HOST string `mapstructure:"EMAIL_SERVICE_HOST"`
-	APPLICATION_DOMAIN string `mapstructure:"APPLICATION_DOMAIN"`
+	AUDITOR_INSTALL_NAME string `mapstructure:"AUDITOR_INSTALL_NAME"`
+
+	DB_HOST           string `mapstructure:"DB_HOST"`
+	DB_NAME           string `mapstructure:"DB_NAME"`
+	DB_USER           string `mapstructure:"DB_USER"`
+	DB_PASS           string `mapstructure:"DB_PASS"`
+	NEXT_API_URL      string `mapstructure:"NEXT_API_URL"`
+	BULK_SAVE_API_KEY string `mapstructure:"BULK_SAVE_API_KEY"`
 }
 
 var globalEnv = Env{}
@@ -41,7 +46,19 @@ func NewEnv(logger Logger) *Env {
 		"REFRESH_TOKEN_SECRET",
 		"EMAIL_SERVICE_HOST",
 		"APPLICATION_DOMAIN",
+		"S3_BUCKET_NAME",
+		"DATABASE_DSN",
+		"REDIS_HOST",
+		"REDIS_PORT",
+		"AUDITOR_INSTALL_NAME",
+		"DB_HOST",
+		"DB_NAME",
+		"DB_USER",
+		"DB_PASS",
+		"NEXT_API_URL",
+		"BULK_SAVE_API_KEY",
 	} {
+
 		envVars[key] = os.Getenv(key)
 	}
 

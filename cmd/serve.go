@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"net"
 
 	"auditor.z9fr.xyz/server/internal/handler"
 	"auditor.z9fr.xyz/server/internal/lib"
+	"auditor.z9fr.xyz/server/internal/proto"
+	"auditor.z9fr.xyz/server/internal/worker"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
@@ -26,19 +27,24 @@ func (s *ServeCommand) Run() lib.CommandRunner {
 	return func(
 		logger lib.Logger,
 		env *lib.Env,
+		parserHandler *handler.ParserHandler,
 		errorHandler *handler.ErrorHandler,
+		processor worker.TaskProcessor,
 	) {
 		lis, err := net.Listen("tcp", fmt.Sprint(":", env.PORT))
 
 		if err != nil {
-			log.Fatalln("Failed to listing:", err)
+			logger.Fatal(err)
 		}
+
+		processor.Start()
 
 		s := grpc.NewServer(grpc.UnaryInterceptor(errorHandler.WithErrorHandler))
 		grpc_health_v1.RegisterHealthServer(s, health.NewServer())
+		proto.RegisterParserHandlerServiceServer(s, parserHandler)
 
 		if err = s.Serve(lis); err != nil {
-			log.Fatalln("Failed to serve:", err)
+			logger.Fatalln("Failed to serve:", err)
 		}
 	}
 }
