@@ -1,4 +1,3 @@
-# build stage
 FROM golang:latest AS builder
 
 WORKDIR /app
