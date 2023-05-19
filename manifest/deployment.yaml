@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auditor-parser-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4002
+      targetPort: 4002
+  selector:
+    app: auditor-parser-svc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auditor-parser-svc
+  labels:
+    app: auditor-parser-svc
+spec:
+  selector:
+    matchLabels:
+      app: auditor-parser-svc
+
+  replicas: 1
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 100%
+
+  template:
+    metadata:
+      labels:
+        app: auditor-parser-svc
+    spec:
+      containers:
+        - name: auditor-parser-svc
+          image: ${DOCKERHUB_USERNAME}/${DOCKERHUB_REPOSITORY}:${IMAGE_LABEL}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4000
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: aws_access_key
+
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: aws_secret_key
+
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: aws_region
+
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: bucket_name
+
+            - name: PORT
+              value: "4002"
+
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: redis_host
+
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: redis_port
+
+            - name: AUDITOR_INSTALL_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: install_bin_auditor
+
+            - name: NEXT_API_URL
+              value: auditor-web-svc:3000
+
+            - name: BULK_SAVE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: bulk_save_api_key
+
+      imagePullSecrets:
+        - name: regcred
