@@ -143,6 +143,16 @@ func (s *AnalyzerService) DownloadAndSetupArchiveForAnalysis(fileName string, wo
 	zipReader, err := zip.NewReader(readerAt, int64(len(buffer)))
 
 	for _, zipFile := range zipReader.File {
+		filePath := filepath.Join(workingDir, zipFile.Name)
+
+		if zipFile.FileInfo().IsDir() {
+			err := os.MkdirAll(filePath, zipFile.Mode())
+			if err != nil {
+				return false, err
+			}
+			continue
+		}
+
 		f, err := os.OpenFile(filepath.Join(workingDir, zipFile.Name), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipFile.Mode())
 
 		if err != nil {
@@ -209,8 +219,6 @@ func (s *AnalyzerService) InitiateAnalyzer(req *proto.AuditStartRequest) (string
 		panic(err)
 	}
 
-	s.log.Info(results)
-
 	url := fmt.Sprintf("%s/save-results", s.env.NEXT_API_URL)
 	method := "POST"
 
@@ -227,6 +235,10 @@ func (s *AnalyzerService) InitiateAnalyzer(req *proto.AuditStartRequest) (string
 	client := &http.Client{}
 	httpreq, err := http.NewRequest(method, url, strings.NewReader(string(jsonData)))
 
+	if err != nil {
+		return "", err
+	}
+
 	httpreq.Header.Add("x-api-token", s.env.BULK_SAVE_API_KEY)
 	httpreq.Header.Add("Content-Type", "application/json")
 
@@ -238,6 +250,7 @@ func (s *AnalyzerService) InitiateAnalyzer(req *proto.AuditStartRequest) (string
 
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
+
 	s.log.Info(body)
 	return "ok", err
 }
